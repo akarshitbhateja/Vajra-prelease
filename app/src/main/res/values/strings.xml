@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Vajra</string>
+    <!-- Replace this with your actual Web Client ID from Firebase Console -> Auth -> Google Provider -->
+    <string name="default_web_client_id">612194550704-tm90hv91tc5q56t839n6bj9ggqhhvbh3.apps.googleusercontent.com</string>
+</resources>
