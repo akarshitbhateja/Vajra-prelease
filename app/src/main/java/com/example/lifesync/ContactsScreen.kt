@@ -121,7 +121,9 @@ fun ContactsScreen(onAddContactClick: () -> Unit, onEditContactClick: (Contact) 
 
     Box(modifier = Modifier.fillMaxSize().background(surfaceBase).statusBarsPadding()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            VajraHeader(currentScreen = AppScreen.Contacts, onNavClick = onNavClick, onAvatarClick = onAvatarClick)
+            Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                VajraHeader(currentScreen = AppScreen.Contacts, onNavClick = onNavClick, onAvatarClick = onAvatarClick)
+            }
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -244,7 +246,7 @@ fun ContactCard(contact: Contact, onClick: () -> Unit, onCall: () -> Unit, prima
                                 contentScale = ContentScale.Crop
                             )
                         } else {
-                            // FIXED: Solid Soft Lilac background without transparency
+                            // Solid Soft Lilac background without transparency
                             Box(modifier = Modifier.fillMaxSize().background(softColor), contentAlignment = Alignment.Center) {
                                 Text(contact.name.take(1).uppercase(), fontFamily = PlusJakartaSansFont, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = primaryColor)
                             }

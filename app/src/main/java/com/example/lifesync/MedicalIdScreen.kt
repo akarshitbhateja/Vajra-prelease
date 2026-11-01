@@ -47,7 +47,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun MedicalIdScreen(onBackClick: () -> Unit) {
+fun MedicalIdScreen(onBackClick: () -> Unit, onEditClick: () -> Unit) {
     val context = LocalContext.current
     val userId = FirebaseAuth.getInstance().currentUser?.uid
     
@@ -81,7 +81,7 @@ fun MedicalIdScreen(onBackClick: () -> Unit) {
                         allergies = (doc.get("allergies") as? List<String>) ?: emptyList()
                         @Suppress("UNCHECKED_CAST")
                         medications = (doc.get("medications") as? List<String>) ?: emptyList()
-                        medicalNotes = doc.getString("notes") ?: "Patient has a documented history of cardiovascular sensitivity. Regular monitoring of blood pressure is advised. Recent checkups indicate stable heart rhythm, but vigilance during high-stress scenarios or emergencies is critical. Avoid high-sodium intakes and maintain prescribed medication schedule."
+                        medicalNotes = doc.getString("notes") ?: "No medical notes recorded."
                         
                         doc.getTimestamp("lastUpdated")?.let { ts ->
                             val sdf = SimpleDateFormat("MMM yyyy", Locale.US)
@@ -159,7 +159,7 @@ fun MedicalIdScreen(onBackClick: () -> Unit) {
                     color = deepEggplant,
                     modifier = Modifier.align(Alignment.Center)
                 )
-                IconButton(onClick = { /* Navigate to Edit Details */ }, modifier = Modifier.align(Alignment.CenterEnd)) {
+                IconButton(onClick = onEditClick, modifier = Modifier.align(Alignment.CenterEnd)) {
                     Icon(Icons.Default.Edit, "Edit", tint = deepEggplant, modifier = Modifier.size(20.dp))
                 }
             }

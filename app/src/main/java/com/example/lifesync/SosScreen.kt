@@ -275,29 +275,117 @@ private fun sendEmergencyAlerts(context: Context, coords: String, address: Strin
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
     val db = FirebaseFirestore.getInstance()
 
-    val lat = coords.split(",").getOrNull(0)?.toDoubleOrNull() ?: 0.0
-    val lng = coords.split(",").getOrNull(1)?.toDoubleOrNull() ?: 0.0
+    val lat = coords.split(",").getOrNull(0)?.trim()?.toDoubleOrNull()
+    val lng = coords.split(",").getOrNull(1)?.trim()?.toDoubleOrNull()
 
-    AuthManager.dispatchEmergencyAlert(gForce, lat, lng, address, {}, {})
+    if (lat == null || lng == null || (lat == 0.0 && lng == 0.0)) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+            fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
+                if (loc != null) {
+                    dispatchAlertsWithCoords(context, uid, db, loc.latitude, loc.longitude, address, gForce)
+                } else {
+                    dispatchAlertsWithCoords(context, uid, db, 28.6139, 77.2090, if (address == "Locating...") "New Delhi, India" else address, gForce)
+                }
+            }.addOnFailureListener {
+                dispatchAlertsWithCoords(context, uid, db, 28.6139, 77.2090, if (address == "Locating...") "New Delhi, India" else address, gForce)
+            }
+        } else {
+            dispatchAlertsWithCoords(context, uid, db, 28.6139, 77.2090, if (address == "Locating...") "New Delhi, India" else address, gForce)
+        }
+    } else {
+        dispatchAlertsWithCoords(context, uid, db, lat, lng, address, gForce)
+    }
+}
+
+private fun dispatchAlertsWithCoords(
+    context: Context,
+    uid: String,
+    db: FirebaseFirestore,
+    lat: Double,
+    lng: Double,
+    address: String,
+    gForce: Double
+) {
+    val cleanAddress = if (address.isBlank() || address == "Locating...") "Coordinates ($lat, $lng)" else address
+    val mapsUrl = "https://maps.google.com/?q=$lat,$lng"
+
+    val impactText = if (gForce > 0) String.format(Locale.US, "%.1fG", gForce) else "Manual Alert"
+    val patientName = AuthManager.currentUserFullName.ifBlank { "User" }
+
+    val message = "URGENT: VAJRA EMERGENCY SOS\n\nPatient: $patientName\nImpact: $impactText\nLocation: $cleanAddress\n\nLive Google Maps:\n$mapsUrl\n\nCoordinates: $lat, $lng\n\nPlease coordinate rescue immediately."
+
+    AuthManager.dispatchEmergencyAlert(gForce, lat, lng, cleanAddress, {}, {})
 
     db.collection("Users").document(uid).collection("contacts").get().addOnSuccessListener { snapshot ->
-        val contacts = snapshot.documents.mapNotNull { it.getString("phone") }
-        if (contacts.isNotEmpty()) {
-            val cleanCoords = coords.replace(" ", "")
-            val mapLink = if (cleanCoords != "Locating...") "https://www.google.com/maps/search/?api=1&query=$cleanCoords" else "Location Unavailable"
-            val message = "URGENT: VAJRA EMERGENCY SOS\n\nPatient: ${AuthManager.currentUserFullName}\nImpact Detected: ${String.format(Locale.US, "%.1f", gForce)}G.\nLocation: $address\nMaps: $mapLink\n\nPlease coordinate rescue immediately."
-            contacts.forEach { phone -> TwilioHelper.sendSmsAsync(phone, message) { success -> if (!success) sendLocalSms(context, phone, message) } }
-            Toast.makeText(context, "SOS Dispatched to Network.", Toast.LENGTH_LONG).show()
+        val fetchedContacts = snapshot.documents.mapNotNull { it.getString("phone") }
+        val targetContacts = if (fetchedContacts.isNotEmpty()) {
+            fetchedContacts
+        } else {
+            listOfNotNull(AuthManager.primaryGuardianPhone)
         }
+
+        if (targetContacts.isNotEmpty()) {
+            targetContacts.forEach { phone ->
+                TwilioHelper.sendSmsAsync(phone, message) { success ->
+                    if (!success) {
+                        sendLocalSms(context, phone, message)
+                    }
+                }
+            }
+            Toast.makeText(context, "Emergency SOS Dispatched to Guardians.", Toast.LENGTH_LONG).show()
+        } else {
+            // Fallback: If no contacts saved in DB, open default SMS composer with emergency message
+            Toast.makeText(context, "SOS Triggered. Opening Emergency SMS Composer.", Toast.LENGTH_LONG).show()
+            openSmsAppFallback(context, "", message)
+        }
+    }.addOnFailureListener {
+        // Network failure fetching contacts: Open default SMS composer
+        openSmsAppFallback(context, AuthManager.primaryGuardianPhone ?: "", message)
     }
 }
 
 private fun sendLocalSms(context: Context, phone: String, message: String) {
+    val cleanPhone = phone.replace(Regex("[^0-9+]"), "")
+    if (cleanPhone.isBlank()) return
+
     if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
         try {
-            val smsManager = if (Build.VERSION.SDK_INT >= VERSION_CODES.S) context.getSystemService(SmsManager::class.java) else @Suppress("DEPRECATION") SmsManager.getDefault()
-            smsManager?.sendTextMessage(phone, null, message, null, null)
-        } catch (e: Exception) { Log.e("VAJRA", "Local SMS failed", e) }
+            val smsManager = if (Build.VERSION.SDK_INT >= VERSION_CODES.S) {
+                context.getSystemService(SmsManager::class.java)
+            } else {
+                @Suppress("DEPRECATION") SmsManager.getDefault()
+            }
+            
+            if (smsManager != null) {
+                val parts = smsManager.divideMessage(message)
+                if (parts.size > 1) {
+                    smsManager.sendMultipartTextMessage(cleanPhone, null, parts, null, null)
+                } else {
+                    smsManager.sendTextMessage(cleanPhone, null, message, null, null)
+                }
+                Log.d("VAJRA", "Background SMS dispatched automatically to $cleanPhone")
+                Toast.makeText(context, "Emergency SMS dispatched automatically to $cleanPhone", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Log.e("VAJRA", "Automatic background SMS failed for $cleanPhone: ${e.message}", e)
+        }
+    } else {
+        Log.w("VAJRA", "SEND_SMS permission missing. Cannot send background SMS automatically.")
+    }
+}
+
+private fun openSmsAppFallback(context: Context, phone: String, message: String) {
+    val cleanPhone = phone.replace(Regex("[^0-9+]"), "")
+    try {
+        val intent = Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse("smsto:${Uri.encode(cleanPhone)}")
+            putExtra("sms_body", message)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Log.e("VAJRA", "Open SMS App failed", e)
     }
 }
 

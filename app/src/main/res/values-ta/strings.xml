@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">லைஃப் சிங்க்</string>
+    <string name="vajra">வஜ்ரா</string>
+    <string name="home">முகப்பு</string>
+    <string name="settings">அமைப்புகள்</string>
+    <string name="logout">வெளியேறு</string>
+    <string name="menu">வஜ்ரா மெனு</string>
+    <string name="protection_active">பாதுகாப்பு\nசெயலில் உள்ளது</string>
+    <string name="system_diagnostic">கணினி கண்டறிதல்</string>
+    <string name="sos">SOS</string>
+    <string name="manual_sos">கையேடு SOS</string>
+    <string name="emergency_contacts">அவசர\nதொடர்புகள்</string>
+    <string name="medical_profile">மருத்துவ\nசுயவிவரம்</string>
+    <string name="safety_network">பாதுகாப்பு நெட்வொர்க்</string>
+    <string name="guardian_circle">பாதுகாவலர் வட்டம்</string>
+    <string name="manage_contacts">தொடர்புகளை நிர்வகிக்கவும்</string>
+    <string name="manage">நிர்வகி</string>
+    <string name="app_preferences">பயன்பாட்டு விருப்பத்தேர்வுகள்</string>
+    <string name="dark_mode">டார்க் மோட்</string>
+    <string name="notifications">அறிவிப்புகள்</string>
+    <string name="language">மொழி</string>
+    <string name="master_volume">மாஸ்டர் எச்சரிக்கை</string>
+</resources>

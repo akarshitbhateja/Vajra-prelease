@@ -37,9 +37,13 @@ fun MedicalProfileScreen(onBackClick: () -> Unit, onNavClick: () -> Unit, onAvat
     var selectedBloodType by remember { mutableStateOf("O+") }
     val bloodTypes = listOf("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
     
-    var allergies by remember { mutableStateOf(listOf("Penicillin", "Latex")) }
-    var conditions by remember { mutableStateOf(listOf("Asthma")) }
-    var medications by remember { mutableStateOf(listOf("Albuterol")) }
+    var allergies by remember { mutableStateOf<List<String>>(emptyList()) }
+    var conditions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var medications by remember { mutableStateOf<List<String>>(emptyList()) }
+    
+    var isAddingAllergy by remember { mutableStateOf(false) }
+    var isAddingCondition by remember { mutableStateOf(false) }
+    var isAddingMedication by remember { mutableStateOf(false) }
     
     var emergencyBroadcast by remember { mutableStateOf(true) }
     var isLoading by remember { mutableStateOf(false) }
@@ -69,10 +73,64 @@ fun MedicalProfileScreen(onBackClick: () -> Unit, onNavClick: () -> Unit, onAvat
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF9F9FF)).statusBarsPadding()) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF9F9FF)).statusBarsPadding(),
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+                    .navigationBarsPadding()
+            ) {
+                Button(
+                    onClick = {
+                        isLoading = true
+                        val userId = FirebaseAuth.getInstance().currentUser?.uid
+                        if (userId != null) {
+                            val profileData = hashMapOf(
+                                "bloodType" to selectedBloodType,
+                                "emergencyBroadcast" to emergencyBroadcast,
+                                "allergies" to allergies,
+                                "conditions" to conditions,
+                                "medications" to medications,
+                                "setupComplete" to true,
+                                "lastUpdated" to Timestamp.now()
+                            )
+                            AuthManager.db.collection("Users").document(userId).collection("medical").document("profile")
+                                .set(profileData)
+                                .addOnSuccessListener { isLoading = false; onBackClick() }
+                                .addOnFailureListener { isLoading = false; Toast.makeText(context, "System Error: ${it.message}", Toast.LENGTH_SHORT).show() }
+                        } else {
+                            onBackClick()
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .shadow(16.dp, RoundedCornerShape(32.dp), spotColor = Primary.copy(alpha = 0.4f)),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                    enabled = !isLoading
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isLoading) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Lock, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Save & Secure Profile", fontFamily = PlusJakartaSansFont, style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White))
+                        }
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(innerPadding)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
         ) {
@@ -133,13 +191,28 @@ fun MedicalProfileScreen(onBackClick: () -> Unit, onNavClick: () -> Unit, onAvat
             SetupCard {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Known Allergies", fontFamily = PlusJakartaSansFont, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Primary))
-                    Surface(color = Color(0xFFFFF0F0), shape = CircleShape, modifier = Modifier.size(28.dp)) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Warning, null, tint = Color(0xFFD32F2F), modifier = Modifier.size(14.dp))
+                    if (!isAddingAllergy) {
+                        Surface(color = Color(0xFFFFF0F0), shape = CircleShape, modifier = Modifier.size(28.dp).clickable { isAddingAllergy = true }) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Add, null, tint = Color(0xFFD32F2F), modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                 }
                 Spacer(modifier = Modifier.height(20.dp))
+                
+                if (isAddingAllergy) {
+                    MedicalAutoComplete(
+                        placeholder = "Search allergies...",
+                        searchType = MedicalSearchType.CONDITIONS,
+                        onItemSelected = { 
+                            if (!allergies.contains(it)) allergies = allergies + it
+                            isAddingAllergy = false 
+                        },
+                        onDismiss = { isAddingAllergy = false }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
                 
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -149,7 +222,6 @@ fun MedicalProfileScreen(onBackClick: () -> Unit, onNavClick: () -> Unit, onAvat
                     allergies.forEach { allergy ->
                         MedicalProfileTag(allergy) { allergies = allergies.filter { it != allergy } }
                     }
-                    AddTagPill { /* Open dialog to add allergy */ }
                 }
             }
 
@@ -159,9 +231,29 @@ fun MedicalProfileScreen(onBackClick: () -> Unit, onNavClick: () -> Unit, onAvat
             SetupCard {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Medical Conditions", fontFamily = PlusJakartaSansFont, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Primary))
-                    Icon(Icons.Default.History, null, tint = Color.LightGray, modifier = Modifier.size(20.dp))
+                    if (!isAddingCondition) {
+                        Surface(color = SoftLilac.copy(alpha = 0.5f), shape = CircleShape, modifier = Modifier.size(28.dp).clickable { isAddingCondition = true }) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Add, null, tint = Primary, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(20.dp))
+                
+                if (isAddingCondition) {
+                    MedicalAutoComplete(
+                        placeholder = "Search conditions...",
+                        searchType = MedicalSearchType.CONDITIONS,
+                        onItemSelected = { 
+                            if (!conditions.contains(it)) conditions = conditions + it
+                            isAddingCondition = false 
+                        },
+                        onDismiss = { isAddingCondition = false }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -170,7 +262,6 @@ fun MedicalProfileScreen(onBackClick: () -> Unit, onNavClick: () -> Unit, onAvat
                     conditions.forEach { condition ->
                         MedicalProfileTag(condition) { conditions = conditions.filter { it != condition } }
                     }
-                    AddTagPill { }
                 }
             }
 
@@ -180,9 +271,29 @@ fun MedicalProfileScreen(onBackClick: () -> Unit, onNavClick: () -> Unit, onAvat
             SetupCard {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Current Medications", fontFamily = PlusJakartaSansFont, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Primary))
-                    Icon(Icons.Default.Medication, null, tint = Color.LightGray, modifier = Modifier.size(20.dp))
+                    if (!isAddingMedication) {
+                        Surface(color = SoftLilac.copy(alpha = 0.5f), shape = CircleShape, modifier = Modifier.size(28.dp).clickable { isAddingMedication = true }) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Add, null, tint = Primary, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(20.dp))
+                
+                if (isAddingMedication) {
+                    MedicalAutoComplete(
+                        placeholder = "Search medications...",
+                        searchType = MedicalSearchType.MEDICATIONS,
+                        onItemSelected = { 
+                            if (!medications.contains(it)) medications = medications + it
+                            isAddingMedication = false 
+                        },
+                        onDismiss = { isAddingMedication = false }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -191,7 +302,6 @@ fun MedicalProfileScreen(onBackClick: () -> Unit, onNavClick: () -> Unit, onAvat
                     medications.forEach { med ->
                         MedicalProfileTag(med) { medications = medications.filter { it != med } }
                     }
-                    AddTagPill { }
                 }
             }
 
@@ -268,51 +378,7 @@ fun MedicalProfileScreen(onBackClick: () -> Unit, onNavClick: () -> Unit, onAvat
                 }
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
-
-            // --- SAVE BUTTON ---
-            Button(
-                onClick = {
-                    isLoading = true
-                    val userId = FirebaseAuth.getInstance().currentUser?.uid
-                    if (userId != null) {
-                        val profileData = hashMapOf(
-                            "bloodType" to selectedBloodType,
-                            "emergencyBroadcast" to emergencyBroadcast,
-                            "allergies" to allergies,
-                            "conditions" to conditions,
-                            "medications" to medications,
-                            "setupComplete" to true,
-                            "lastUpdated" to Timestamp.now()
-                        )
-                        AuthManager.db.collection("Users").document(userId).collection("medical").document("profile")
-                            .set(profileData)
-                            .addOnSuccessListener { isLoading = false; onBackClick() }
-                            .addOnFailureListener { isLoading = false; Toast.makeText(context, "System Error: ${it.message}", Toast.LENGTH_SHORT).show() }
-                    } else {
-                        onBackClick()
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-                    .shadow(16.dp, RoundedCornerShape(36.dp), spotColor = Primary.copy(alpha = 0.4f)),
-                shape = RoundedCornerShape(36.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                enabled = !isLoading
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isLoading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Default.Lock, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("Save & Secure Profile", fontFamily = PlusJakartaSansFont, style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White))
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(140.dp))
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -374,30 +440,7 @@ private fun MedicalProfileTag(text: String, onRemove: () -> Unit) {
     }
 }
 
-@Composable
-private fun AddTagPill(onClick: () -> Unit) {
-    val dashPath = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-    Box(
-        modifier = Modifier
-            .height(44.dp)
-            .width(90.dp)
-            .drawBehind {
-                drawRoundRect(
-                    color = Color.LightGray,
-                    style = Stroke(width = 2f, pathEffect = dashPath),
-                    cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
-                )
-            }
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Add, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("Add", fontFamily = PlusJakartaSansFont, style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Bold))
-        }
-    }
-}
+
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

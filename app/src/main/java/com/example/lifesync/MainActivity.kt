@@ -11,7 +11,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -61,7 +63,7 @@ import com.google.android.gms.location.Priority
 
 enum class AppScreen { Login, SignUp1, SignUp2, Home, Contacts, MedicalProfile, Settings, SOS, MedicalID, AddContact, EditContact, EditProfile }
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private var isSosActiveGlobal = false
 
@@ -112,6 +114,9 @@ class MainActivity : ComponentActivity() {
                 var editingContact by remember { mutableStateOf<Contact?>(null) }
                 var showBackgroundLocationDialog by remember { mutableStateOf(false) }
 
+                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                val coroutineScope = rememberCoroutineScope()
+
                 val context = LocalContext.current
                 val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
@@ -121,7 +126,9 @@ class MainActivity : ComponentActivity() {
 
                 val onNavClick: () -> Unit = {
                     if (currentScreen == AppScreen.Home) {
-                        // Optional: Open drawer
+                        coroutineScope.launch {
+                            drawerState.open()
+                        }
                     } else {
                         currentScreen = when (currentScreen) {
                             AppScreen.AddContact, AppScreen.EditContact -> AppScreen.Contacts
@@ -227,7 +234,43 @@ class MainActivity : ComponentActivity() {
                     onDispose { removeOnNewIntentListener(listener) }
                 }
 
-                Box(modifier = Modifier.fillMaxSize()) {
+                ModalNavigationDrawer(
+                    drawerState = drawerState,
+                    drawerContent = {
+                        ModalDrawerSheet(
+                            modifier = Modifier.width(280.dp),
+                            drawerContainerColor = Color(0xFFF9F9FF)
+                        ) {
+                            Column(modifier = Modifier.padding(24.dp).fillMaxHeight()) {
+                                Text(stringResource(R.string.menu), fontFamily = LexendFont, fontSize = 24.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(32.dp))
+                                NavigationDrawerItem(
+                                    label = { Text(stringResource(R.string.home), fontFamily = PlusJakartaSansFont, fontWeight = FontWeight.Bold) },
+                                    selected = currentScreen == AppScreen.Home,
+                                    onClick = { currentScreen = AppScreen.Home; coroutineScope.launch { drawerState.close() } },
+                                    icon = { Icon(Icons.Default.Home, null) }
+                                )
+                                NavigationDrawerItem(
+                                    label = { Text(stringResource(R.string.settings), fontFamily = PlusJakartaSansFont, fontWeight = FontWeight.Bold) },
+                                    selected = currentScreen == AppScreen.Settings,
+                                    onClick = { currentScreen = AppScreen.Settings; coroutineScope.launch { drawerState.close() } },
+                                    icon = { Icon(Icons.Default.Settings, null) }
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                NavigationDrawerItem(
+                                    label = { Text(stringResource(R.string.logout), fontFamily = PlusJakartaSansFont, fontWeight = FontWeight.Bold, color = Color.Red) },
+                                    selected = false,
+                                    onClick = { 
+                                        AuthManager.logout()
+                                        currentScreen = AppScreen.Login 
+                                        coroutineScope.launch { drawerState.close() } 
+                                    },
+                                    icon = { @Suppress("DEPRECATION") Icon(Icons.Default.ExitToApp, null, tint = Color.Red) }
+                                )
+                            }
+                        }
+                    }
+                ) {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         containerColor = Color(0xFFF9F9FF),
@@ -295,6 +338,7 @@ class MainActivity : ComponentActivity() {
                                         onLogout = { currentScreen = AppScreen.Login },
                                         onEditProfileClick = { currentScreen = AppScreen.EditProfile },
                                         onMedicalIdClick = { currentScreen = AppScreen.MedicalID },
+                                        onManageContactsClick = { currentScreen = AppScreen.Contacts },
                                         onNavClick = onNavClick,
                                         onAvatarClick = onAvatarClick
                                     )
@@ -320,7 +364,8 @@ class MainActivity : ComponentActivity() {
                                         }
                                     )
                                     AppScreen.MedicalID -> MedicalIdScreen(
-                                        onBackClick = { currentScreen = AppScreen.Home }
+                                        onBackClick = { currentScreen = AppScreen.Home },
+                                        onEditClick = { currentScreen = AppScreen.MedicalProfile }
                                     )
                                     AppScreen.AddContact -> AddContactScreen(
                                         onBackClick = { currentScreen = AppScreen.Contacts }
@@ -448,24 +493,24 @@ fun HomeDashboardScreen(
                 }
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    "SYSTEM DIAGNOSTIC", 
+                    stringResource(R.string.system_diagnostic), 
                     fontFamily = PlusJakartaSansFont,
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.1.em
+                        letterSpacing = 1.sp
                     ),
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "PROTECTION\nACTIVE", 
+                    stringResource(R.string.protection_active), 
                     fontFamily = LexendFont,
                     style = MaterialTheme.typography.displayLarge.copy(
                         fontSize = 38.sp, 
                         fontWeight = FontWeight.Black,
                         lineHeight = 42.sp
                     ),
-                    color = Primary, 
+                    color = MaterialTheme.colorScheme.primary, 
                     textAlign = TextAlign.Center
                 )
             }
@@ -522,18 +567,18 @@ fun HomeDashboardScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                "SOS",
+                                stringResource(R.string.sos),
                                 fontFamily = LexendFont,
                                 color = Color.White,
                                 style = MaterialTheme.typography.displayLarge.copy(
                                     fontSize = 64.sp,
                                     fontWeight = FontWeight.Black,
-                                    letterSpacing = (-0.02).em
+                                    letterSpacing = (-1).sp
                                 )
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                "MANUAL SOS", 
+                                stringResource(R.string.manual_sos), 
                                 fontFamily = LexendFont,
                                 color = Color.White, 
                                 style = MaterialTheme.typography.titleMedium.copy(
@@ -556,13 +601,13 @@ fun HomeDashboardScreen(
             ) {
                 DashboardSmallCard(
                     icon = Icons.Default.ContactPage,
-                    label = "Emergency\nContacts",
+                    label = stringResource(R.string.emergency_contacts),
                     onClick = onContactsClick,
                     modifier = Modifier.weight(1f)
                 )
                 DashboardSmallCard(
                     icon = Icons.Default.MedicalServices,
-                    label = "Medical\nProfile",
+                    label = stringResource(R.string.medical_profile),
                     onClick = onProfileClick,
                     modifier = Modifier.weight(1f)
                 )

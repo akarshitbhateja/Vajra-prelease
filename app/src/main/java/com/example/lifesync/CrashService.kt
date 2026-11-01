@@ -44,7 +44,7 @@ class CrashService : Service() {
             return
         }
 
-        // FIXED: Using lastLocation. This takes 0.001 seconds instead of 5-10 seconds!
+        // Using lastLocation for instant fallback.
         // It provides an instant fallback so the SOS screen pops up immediately.
         // The SosScreen will handle getting the high-accuracy live location once it opens.
         fusedLocationClient.lastLocation

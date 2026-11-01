@@ -104,14 +104,14 @@ fun EditContactScreen(contact: Contact, onBackClick: () -> Unit) {
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBackClick) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Primary) }
-            Text("Edit Contact", fontFamily = LexendFont, style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold), color = Primary)
-            Spacer(modifier = Modifier.weight(1f))
-            UserProfileAvatar(modifier = Modifier.size(44.dp).shadow(4.dp, CircleShape))
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp, horizontal = 24.dp)) {
+            IconButton(onClick = onBackClick, modifier = Modifier.align(Alignment.CenterStart)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Primary)
+            }
+            Text("Edit Contact", fontFamily = LexendFont, style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold), color = Primary, modifier = Modifier.align(Alignment.Center))
+            Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+                UserProfileAvatar(modifier = Modifier.size(44.dp).shadow(4.dp, CircleShape))
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))

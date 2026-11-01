@@ -45,14 +45,77 @@ fun SignUpStep2Screen(onCompleteClick: () -> Unit, onBackClick: () -> Unit, onNa
     var selectedBloodType by remember { mutableStateOf("A+") }
     val bloodTypes = listOf("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-")
     var emergencyBroadcast by remember { mutableStateOf(true) }
+    
+    var allergies by remember { mutableStateOf<List<String>>(emptyList()) }
+    var conditions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var medications by remember { mutableStateOf<List<String>>(emptyList()) }
+    
+    var isAddingAllergy by remember { mutableStateOf(false) }
+    var isAddingCondition by remember { mutableStateOf(false) }
+    var isAddingMedication by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    Box(modifier = Modifier.fillMaxSize().background(SurfaceBase).statusBarsPadding()) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = SurfaceBase,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            Surface(
+                modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
+                color = Color.White.copy(alpha = 0.95f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Button(
+                        onClick = onCompleteClick,
+                        modifier = Modifier.weight(1f).height(64.dp),
+                        shape = RoundedCornerShape(32.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E7FF))
+                    ) {
+                        Text("Skip for Now", color = Color(0xFF001B3C), fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1)
+                    }
+                    Button(
+                        onClick = {
+                            isLoading = true
+                            val userId = FirebaseAuth.getInstance().currentUser?.uid
+                            if (userId != null) {
+                                val profileData = hashMapOf(
+                                    "bloodType" to selectedBloodType,
+                                    "emergencyBroadcast" to emergencyBroadcast,
+                                    "allergies" to allergies,
+                                    "conditions" to conditions,
+                                    "medications" to medications,
+                                    "setupComplete" to true,
+                                    "lastUpdated" to Timestamp.now()
+                                )
+                                AuthManager.db.collection("Users").document(userId).collection("medical").document("profile")
+                                    .set(profileData)
+                                    .addOnSuccessListener { isLoading = false; onCompleteClick() }
+                                    .addOnFailureListener { isLoading = false; Toast.makeText(context, "System Error: ${it.message}", Toast.LENGTH_SHORT).show() }
+                            } else {
+                                onCompleteClick()
+                            }
+                        },
+                        modifier = Modifier.weight(1.3f).height(64.dp),
+                        shape = RoundedCornerShape(32.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00091B)),
+                        enabled = !isLoading
+                    ) {
+                        if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        else Text("Save Profile", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(innerPadding)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
         ) {
@@ -103,14 +166,37 @@ fun SignUpStep2Screen(onCompleteClick: () -> Unit, onBackClick: () -> Unit, onNa
                             Spacer(modifier = Modifier.height(4.dp))
                             Text("HIGH RISK INDICATORS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFBA1A1A), letterSpacing = 0.5.sp)
                         }
-                        Surface(color = Color(0xFFE0E7FF), shape = RoundedCornerShape(50.dp), modifier = Modifier.clickable { }) {
-                            Text("Add Record", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF001B3C), modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), maxLines = 1)
+                        if (!isAddingAllergy) {
+                            Surface(color = Color(0xFFE0E7FF), shape = RoundedCornerShape(50.dp), modifier = Modifier.clickable { isAddingAllergy = true }) {
+                                Text("Add Record", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF001B3C), modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), maxLines = 1)
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(24.dp))
-                    AllergyRow("Penicillin", isCritical = true)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    AllergyRow("Shellfish", isCritical = false)
+
+                    if (isAddingAllergy) {
+                        MedicalAutoComplete(
+                            placeholder = "Search allergies (e.g. Penicillin)",
+                            searchType = MedicalSearchType.CONDITIONS,
+                            onItemSelected = { 
+                                if (!allergies.contains(it)) allergies = allergies + it
+                                isAddingAllergy = false 
+                            },
+                            onDismiss = { isAddingAllergy = false }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    if (allergies.isEmpty()) {
+                        DashedContainer("NO ALLERGIES RECORDED", Icons.Default.Warning)
+                    } else {
+                        allergies.forEach { allergy ->
+                            AllergyRow(allergy, isCritical = true) {
+                                allergies = allergies.filter { it != allergy }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
                 }
             }
 
@@ -118,14 +204,42 @@ fun SignUpStep2Screen(onCompleteClick: () -> Unit, onBackClick: () -> Unit, onNa
 
             Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(32.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(28.dp)) {
-                    Text("Medical Conditions", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF001B3C))
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("EXISTING DIAGNOSES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF44474E))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Text("Medical Conditions", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF001B3C))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("EXISTING DIAGNOSES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF44474E))
+                        }
+                        if (!isAddingCondition) {
+                            Surface(color = Color(0xFFE0E7FF), shape = RoundedCornerShape(50.dp), modifier = Modifier.clickable { isAddingCondition = true }) {
+                                Text("Add Record", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF001B3C), modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), maxLines = 1)
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.height(24.dp))
-                    DashedContainer("NO CONDITIONS RECORDED", Icons.Default.MedicalServices)
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Button(onClick = {}, modifier = Modifier.fillMaxWidth().height(60.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF0F3FF)), shape = RoundedCornerShape(50.dp)) {
-                        Text("Update Medical Record", color = Color(0xFF001B3C), fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+
+                    if (isAddingCondition) {
+                        MedicalAutoComplete(
+                            placeholder = "Search conditions (e.g. Asthma)",
+                            searchType = MedicalSearchType.CONDITIONS,
+                            onItemSelected = { 
+                                if (!conditions.contains(it)) conditions = conditions + it
+                                isAddingCondition = false 
+                            },
+                            onDismiss = { isAddingCondition = false }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    if (conditions.isEmpty()) {
+                        DashedContainer("NO CONDITIONS RECORDED", Icons.Default.MedicalServices)
+                    } else {
+                        conditions.forEach { condition ->
+                            AllergyRow(condition, isCritical = false) {
+                                conditions = conditions.filter { it != condition }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
             }
@@ -134,19 +248,42 @@ fun SignUpStep2Screen(onCompleteClick: () -> Unit, onBackClick: () -> Unit, onNa
 
             Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(32.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(28.dp)) {
-                    Text("Current Prescriptions", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF001B3C))
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("ACTIVE MEDICATIONS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF44474E))
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Row(modifier = Modifier.fillMaxWidth().height(60.dp).clip(RoundedCornerShape(50.dp)).background(Color(0xFFF0F3FF)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Lisinopril 10mg", color = Color(0xFF001B3C), fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(start = 24.dp), maxLines = 1)
-                        Surface(color = Color.White, shape = RoundedCornerShape(50.dp), modifier = Modifier.padding(end = 12.dp)) {
-                            Text("DAILY", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF44474E), modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), maxLines = 1)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Text("Current Prescriptions", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF001B3C))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("ACTIVE MEDICATIONS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF44474E))
+                        }
+                        if (!isAddingMedication) {
+                            Surface(color = Color(0xFFE0E7FF), shape = RoundedCornerShape(50.dp), modifier = Modifier.clickable { isAddingMedication = true }) {
+                                Text("Add Record", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF001B3C), modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), maxLines = 1)
+                            }
                         }
                     }
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Button(onClick = {}, modifier = Modifier.fillMaxWidth().height(60.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF0F3FF)), shape = RoundedCornerShape(50.dp)) {
-                        Text("Manage Prescriptions", color = Color(0xFF001B3C), fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    if (isAddingMedication) {
+                        MedicalAutoComplete(
+                            placeholder = "Search medications (e.g. Lisinopril)",
+                            searchType = MedicalSearchType.MEDICATIONS,
+                            onItemSelected = { 
+                                if (!medications.contains(it)) medications = medications + it
+                                isAddingMedication = false 
+                            },
+                            onDismiss = { isAddingMedication = false }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    if (medications.isEmpty()) {
+                        DashedContainer("NO MEDICATIONS RECORDED", Icons.Default.MedicalServices)
+                    } else {
+                        medications.forEach { med ->
+                            AllergyRow(med, isCritical = false) {
+                                medications = medications.filter { it != med }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
             }
@@ -208,34 +345,8 @@ fun SignUpStep2Screen(onCompleteClick: () -> Unit, onBackClick: () -> Unit, onNa
                 }
             }
 
-            // Guaranteed space for sticky nav bar
-            Spacer(modifier = Modifier.height(180.dp))
-        }
-
-        Surface(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(), color = Color.White.copy(alpha = 0.95f)) {
-            Row(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Button(onClick = onCompleteClick, modifier = Modifier.weight(1f).height(64.dp), shape = RoundedCornerShape(32.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E7FF))) {
-                    Text("Skip for Now", color = Color(0xFF001B3C), fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1)
-                }
-                Button(
-                    onClick = {
-                        isLoading = true
-                        val userId = FirebaseAuth.getInstance().currentUser?.uid
-                        if (userId != null) {
-                            val profileData = hashMapOf("bloodType" to selectedBloodType, "emergencyBroadcast" to emergencyBroadcast, "setupComplete" to true, "lastUpdated" to Timestamp.now())
-                            AuthManager.db.collection("Users").document(userId).collection("medical").document("profile")
-                                .set(profileData)
-                                .addOnSuccessListener { isLoading = false; onCompleteClick() }
-                                .addOnFailureListener { isLoading = false; Toast.makeText(context, "System Error: ${it.message}", Toast.LENGTH_SHORT).show() }
-                        } else {
-                            onCompleteClick()
-                        }
-                    },
-                    modifier = Modifier.weight(1.3f).height(64.dp), shape = RoundedCornerShape(32.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00091B)), enabled = !isLoading
-                ) {
-                    if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp) else Text("Save & Secure Profile", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
-                }
-            }
+            // Guaranteed space at bottom of content
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -248,14 +359,14 @@ fun BloodTypeChip(type: String, isSelected: Boolean, modifier: Modifier = Modifi
 }
 
 @Composable
-fun AllergyRow(name: String, isCritical: Boolean) {
+fun AllergyRow(name: String, isCritical: Boolean, onRemove: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(50.dp)).background(if (isCritical) Color(0xFFFFF0F0) else Color(0xFFF0F3FF)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 24.dp)) {
             Icon(if (isCritical) Icons.Default.Warning else Icons.Default.MedicalServices, contentDescription = null, tint = if (isCritical) Color(0xFFBA1A1A) else Color(0xFF44474E), modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(16.dp))
             Text(name, color = if (isCritical) Color(0xFFBA1A1A) else Color(0xFF001B3C), fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
-        Icon(Icons.Default.Close, contentDescription = "Remove", tint = if (isCritical) Color(0xFFBA1A1A) else Color(0xFF44474E), modifier = Modifier.padding(end = 24.dp).size(24.dp).clickable { })
+        Icon(Icons.Default.Close, contentDescription = "Remove", tint = if (isCritical) Color(0xFFBA1A1A) else Color(0xFF44474E), modifier = Modifier.padding(end = 24.dp).size(24.dp).clickable { onRemove() })
     }
 }
 

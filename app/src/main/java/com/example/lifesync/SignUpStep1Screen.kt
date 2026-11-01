@@ -63,9 +63,10 @@ fun SignUpStep1Screen(onNextClick: () -> Unit, onBackClick: () -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 28.dp)
     ) {
-        Spacer(modifier = Modifier.height(24.dp))
-        IconButton(onClick = onBackClick, modifier = Modifier.offset(x = (-12).dp)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryContainer, modifier = Modifier.size(28.dp))
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+            IconButton(onClick = onBackClick, modifier = Modifier.align(Alignment.CenterStart)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryContainer, modifier = Modifier.size(28.dp))
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))

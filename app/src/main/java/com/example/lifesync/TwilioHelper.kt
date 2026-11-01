@@ -13,6 +13,12 @@ object TwilioHelper {
     private val client = OkHttpClient()
 
     fun sendSmsAsync(toNumber: String, message: String, onResult: (Boolean) -> Unit) {
+        if (ACCOUNT_SID.isBlank() || AUTH_TOKEN.isBlank() || FROM_NUMBER.isBlank()) {
+            Log.w("Twilio", "Twilio credentials incomplete. Falling back to automatic background SIM SMS.")
+            onResult(false)
+            return
+        }
+
         val url = "https://api.twilio.com/2010-04-01/Accounts/$ACCOUNT_SID/Messages.json"
 
         var cleanNumber = toNumber.replace(Regex("[^0-9+]"), "")
@@ -46,12 +52,18 @@ object TwilioHelper {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                Log.e("Twilio", "Network request failed: ${e.message}")
+                Log.e("Twilio", "Twilio Network request failed: ${e.message}")
                 onResult(false)
             }
 
             override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string() ?: ""
                 val success = response.isSuccessful
+                if (!success) {
+                    Log.e("Twilio", "Twilio API Error [HTTP ${response.code}]: $responseBody")
+                } else {
+                    Log.d("Twilio", "Twilio API Success: $responseBody")
+                }
                 onResult(success)
                 response.close()
             }

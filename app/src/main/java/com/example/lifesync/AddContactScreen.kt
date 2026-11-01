@@ -65,12 +65,11 @@ fun AddContactScreen(onBackClick: () -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBackClick) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color(0xFF001B3C))
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+            IconButton(onClick = onBackClick, modifier = Modifier.align(Alignment.CenterStart)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Primary)
             }
-            Text("Add Emergency Contact", fontFamily = LexendFont, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF001B3C))
+            Text("Add Emergency Contact", fontFamily = LexendFont, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Primary, modifier = Modifier.align(Alignment.Center))
         }
 
         Spacer(modifier = Modifier.height(48.dp))

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">లైఫ్ సింక్</string>
+    <string name="vajra">వజ్ర</string>
+    <string name="home">హోమ్</string>
+    <string name="settings">సెట్టింగ్‌లు</string>
+    <string name="logout">లాగ్ అవుట్</string>
+    <string name="menu">వజ్ర మెను</string>
+    <string name="protection_active">రక్షణ\nసక్రియంగా ఉంది</string>
+    <string name="system_diagnostic">సిస్టమ్ డయాగ్నోస్టిక్</string>
+    <string name="sos">SOS</string>
+    <string name="manual_sos">మాన్యువల్ SOS</string>
+    <string name="emergency_contacts">అత్యవసర\nపరిచయాలు</string>
+    <string name="medical_profile">వైద్య\nప్రొఫైల్</string>
+    <string name="safety_network">భద్రతా నెట్‌వర్క్</string>
+    <string name="guardian_circle">గార్డియన్ సర్కిల్</string>
+    <string name="manage_contacts">నమ్మకమైన పరిచయాలను నిర్వహించండి</string>
+    <string name="manage">నిర్వహించు</string>
+    <string name="app_preferences">యాప్ ప్రాధాన్యతలు</string>
+    <string name="dark_mode">డార్క్ మోడ్</string>
+    <string name="notifications">నోటిఫికేషన్లు</string>
+    <string name="language">భాష</string>
+    <string name="master_volume">మాస్టర్ వాల్యూమ్</string>
+</resources>

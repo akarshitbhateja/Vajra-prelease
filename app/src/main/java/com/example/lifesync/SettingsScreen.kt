@@ -1,5 +1,11 @@
 package com.example.lifesync
 
+import android.content.Intent
+import android.provider.Settings
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -22,7 +28,98 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.lifesync.R
 import com.example.lifesync.ui.theme.*
+
+@Composable
+fun SettingsHeaderLabel(text: String) {
+    Text(
+        text = text,
+        fontFamily = PlusJakartaSansFont,
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 24.dp, bottom = 12.dp)
+    )
+}
+
+@Composable
+fun SettingsItemRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    iconBgColor: Color = Color.Transparent,
+    onClick: (() -> Unit)? = null,
+    trailing: @Composable () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).let { if (onClick != null) it.clickable { onClick() } else it },
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(if (iconBgColor == Color.Transparent) MaterialTheme.colorScheme.surfaceContainerHighest else iconBgColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = if (iconBgColor == Color.Transparent) MaterialTheme.colorScheme.primary else Color.White, modifier = Modifier.size(22.dp))
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, fontFamily = PlusJakartaSansFont, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                if (subtitle != null) {
+                    Text(subtitle, fontFamily = PlusJakartaSansFont, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), fontSize = 12.sp)
+                }
+            }
+            trailing()
+        }
+    }
+}
+
+@Composable
+fun SettingsActionCard(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    actionLabel: String,
+    onClick: (() -> Unit)? = null
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).let { if (onClick != null) it.clickable { onClick() } else it },
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(28.dp)
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(title, fontFamily = PlusJakartaSansFont, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 16.sp)
+                    Text(subtitle, fontFamily = PlusJakartaSansFont, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), fontSize = 13.sp)
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "$actionLabel \u2192",
+                fontFamily = PlusJakartaSansFont,
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+    }
+}
 
 @Composable
 fun SettingsScreen(
@@ -30,6 +127,7 @@ fun SettingsScreen(
     onLogout: () -> Unit,
     onEditProfileClick: () -> Unit,
     onMedicalIdClick: () -> Unit,
+    onManageContactsClick: () -> Unit = {},
     onNavClick: () -> Unit,
     onAvatarClick: () -> Unit
 ) {
@@ -39,50 +137,54 @@ fun SettingsScreen(
     var biometricLock by remember { mutableStateOf(true) }
     var silentSos by remember { mutableStateOf(false) }
     var alertVolume by remember { mutableFloatStateOf(AuthManager.alertVolume.coerceIn(0.3f, 1f)) }
-    var darkMode by remember { mutableStateOf(false) }
+    var darkMode by remember { mutableStateOf(AuthManager.isDarkMode) }
+    var languageExpanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF9F9FF)).statusBarsPadding()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(horizontal = 24.dp)
-        ) {
-            // Editorial Header
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                IconButton(
-                    onClick = onNavClick,
-                    modifier = Modifier.align(Alignment.CenterStart)
-                ) {
-                    Icon(Icons.Default.Menu, "Menu", tint = Primary, modifier = Modifier.size(28.dp))
-                }
-
-                Text(
-                    "VAJRA",
-                    fontFamily = LexendFont,
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 4.sp
-                    ),
-                    color = Primary
-                )
-
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                // Editorial Header
                 Box(
                     modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .clickable { onAvatarClick() }
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    UserProfileAvatar(modifier = Modifier.size(44.dp).shadow(4.dp, CircleShape))
+                    IconButton(
+                        onClick = onNavClick,
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    ) {
+                        Icon(Icons.Default.Menu, "Menu", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    }
+
+                    Text(
+                        stringResource(R.string.vajra),
+                        fontFamily = LexendFont,
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 4.sp
+                        ),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .clickable { onAvatarClick() }
+                    ) {
+                        UserProfileAvatar(modifier = Modifier.size(44.dp))
+                    }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 24.dp)
+            ) {
+                Spacer(modifier = Modifier.height(8.dp))
 
             // 1. ELEVATED PROFILE CARD
             Surface(
@@ -284,42 +386,84 @@ fun SettingsScreen(
             }
 
             // SECTION: Safety Network
-            SettingsHeaderLabel("Safety Network")
+            SettingsHeaderLabel(stringResource(R.string.safety_network))
             SettingsActionCard(
                 icon = Icons.Default.Groups,
-                title = "Guardian Circle",
-                subtitle = "4 trusted contacts",
-                actionLabel = "Manage"
-            )
-            SettingsActionCard(
-                icon = Icons.AutoMirrored.Filled.Shortcut,
-                title = "Hospital Network",
-                subtitle = "Preferred providers",
-                actionLabel = "Configure"
+                title = stringResource(R.string.guardian_circle),
+                subtitle = stringResource(R.string.manage_contacts),
+                actionLabel = stringResource(R.string.manage),
+                onClick = onManageContactsClick
             )
 
             // SECTION: App Preferences
-            SettingsHeaderLabel("App Preferences")
-            SettingsItemRow(icon = Icons.Default.DarkMode, title = "Dark Mode") {
+            SettingsHeaderLabel(stringResource(R.string.app_preferences))
+            SettingsItemRow(
+                icon = Icons.Default.DarkMode, 
+                title = stringResource(R.string.dark_mode)
+            ) {
                 Switch(
                     checked = darkMode,
-                    onCheckedChange = { darkMode = it },
+                    onCheckedChange = { 
+                        darkMode = it
+                        AuthManager.isDarkMode = it
+                        AuthManager.saveUserPreferences()
+                    },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = Primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
                         uncheckedTrackColor = Color(0xFFE2E2E8),
                         uncheckedThumbColor = Color.White
                     )
                 )
             }
-            SettingsItemRow(icon = Icons.Default.Notifications, title = "Notifications") {
+            SettingsItemRow(
+                icon = Icons.Default.Notifications, 
+                title = stringResource(R.string.notifications),
+                onClick = {
+                    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    }
+                    context.startActivity(intent)
+                }
+            ) {
                 Icon(Icons.Default.ChevronRight, null, tint = Color.LightGray, modifier = Modifier.size(24.dp))
             }
-            SettingsItemRow(icon = Icons.Default.Language, title = "Language") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("English", fontFamily = PlusJakartaSansFont, color = Primary.copy(alpha = 0.4f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(Icons.Default.ChevronRight, null, tint = Color.LightGray, modifier = Modifier.size(24.dp))
+            SettingsItemRow(
+                icon = Icons.Default.Language, 
+                title = stringResource(R.string.language),
+                onClick = { languageExpanded = true }
+            ) {
+                Box {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(AuthManager.selectedLanguage, fontFamily = PlusJakartaSansFont, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(Icons.Default.ChevronRight, null, tint = Color.LightGray, modifier = Modifier.size(24.dp))
+                    }
+                    DropdownMenu(
+                        expanded = languageExpanded,
+                        onDismissRequest = { languageExpanded = false },
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                    ) {
+                        val appCompatLanguages = mapOf(
+                            "English" to "en",
+                            "हिंदी (Hindi)" to "hi",
+                            "বাংলা (Bengali)" to "bn",
+                            "తెలుగు (Telugu)" to "te",
+                            "தமிழ் (Tamil)" to "ta"
+                        )
+                        appCompatLanguages.keys.forEach { lang ->
+                            DropdownMenuItem(
+                                text = { Text(lang, fontFamily = PlusJakartaSansFont, color = MaterialTheme.colorScheme.onSurface) },
+                                onClick = {
+                                    AuthManager.selectedLanguage = lang
+                                    AuthManager.saveUserPreferences()
+                                    val langCode = appCompatLanguages[lang] ?: "en"
+                                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(langCode))
+                                    languageExpanded = false
+                                }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -347,92 +491,4 @@ fun SettingsScreen(
         }
     }
 }
-
-@Composable
-fun SettingsHeaderLabel(text: String) {
-    Text(
-        text = text,
-        fontFamily = PlusJakartaSansFont,
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Bold,
-        color = Primary,
-        modifier = Modifier.padding(top = 24.dp, bottom = 12.dp)
-    )
-}
-
-@Composable
-fun SettingsItemRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String? = null,
-    iconBgColor: Color = Color.Transparent,
-    trailing: @Composable () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        color = Color(0xFFF3F3F9),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(if (iconBgColor == Color.Transparent) Color(0xFFECECF4) else iconBgColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, null, tint = if (iconBgColor == Color.Transparent) Primary else Color.White, modifier = Modifier.size(22.dp))
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontFamily = PlusJakartaSansFont, fontWeight = FontWeight.Bold, color = Primary, fontSize = 15.sp)
-                if (subtitle != null) {
-                    Text(subtitle, fontFamily = PlusJakartaSansFont, color = Primary.copy(alpha = 0.5f), fontSize = 12.sp)
-                }
-            }
-            trailing()
-        }
-    }
-}
-
-@Composable
-fun SettingsActionCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    actionLabel: String
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        color = Color(0xFFF3F3F9),
-        shape = RoundedCornerShape(28.dp)
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(Primary.copy(alpha = 0.05f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(icon, null, tint = Primary, modifier = Modifier.size(22.dp))
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text(title, fontFamily = PlusJakartaSansFont, fontWeight = FontWeight.Bold, color = Primary, fontSize = 16.sp)
-                    Text(subtitle, fontFamily = PlusJakartaSansFont, color = Primary.copy(alpha = 0.5f), fontSize = 13.sp)
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "$actionLabel \u2192",
-                fontFamily = PlusJakartaSansFont,
-                color = Primary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.clickable { /* Action */ }
-            )
-        }
-    }
 }

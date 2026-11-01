@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">लाइफसिंक (LifeSync)</string>
+    <string name="vajra">वज्र</string>
+    <string name="home">मुख्य पृष्ठ</string>
+    <string name="settings">सेटिंग्स</string>
+    <string name="logout">लॉग आउट</string>
+    <string name="menu">वज्र मेनू</string>
+    <string name="protection_active">सुरक्षा\nसक्रिय</string>
+    <string name="system_diagnostic">सिस्टम डायग्नोस्टिक</string>
+    <string name="sos">एसओएस (SOS)</string>
+    <string name="manual_sos">मैनुअल एसओएस</string>
+    <string name="emergency_contacts">आपातकालीन\nसंपर्क</string>
+    <string name="medical_profile">मेडिकल\nप्रोफाइल</string>
+    <string name="safety_network">सुरक्षा नेटवर्क</string>
+    <string name="guardian_circle">गार्जियन सर्कल</string>
+    <string name="manage_contacts">विश्वसनीय संपर्क प्रबंधित करें</string>
+    <string name="manage">प्रबंधित करें</string>
+    <string name="app_preferences">ऐप प्राथमिकताएं</string>
+    <string name="dark_mode">डार्क मोड</string>
+    <string name="notifications">सूचनाएं</string>
+    <string name="language">भाषा</string>
+    <string name="master_volume">मास्टर अलर्ट वॉल्यूम</string>
+</resources>

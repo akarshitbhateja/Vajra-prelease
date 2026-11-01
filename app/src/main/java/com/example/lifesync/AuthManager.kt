@@ -30,6 +30,8 @@ object AuthManager {
 
     // User Preferences
     var alertVolume by mutableFloatStateOf(0.5f) // Default 50%
+    var isDarkMode by mutableStateOf(false)
+    var selectedLanguage by mutableStateOf("English")
 
     fun isUserLoggedIn(): Boolean {
         return auth.currentUser != null
@@ -45,6 +47,8 @@ object AuthManager {
         currentUserAddress = ""
         primaryGuardianPhone = null
         alertVolume = 0.5f
+        isDarkMode = false
+        selectedLanguage = "English"
     }
 
     fun fetchUserProfile() {
@@ -79,6 +83,8 @@ object AuthManager {
             if (savedVolume != null) {
                 alertVolume = savedVolume
             }
+            isDarkMode = doc.getBoolean("isDarkMode") ?: false
+            selectedLanguage = doc.getString("selectedLanguage") ?: "English"
         }
 
         // Fetch Primary Guardian Phone
@@ -119,7 +125,11 @@ object AuthManager {
 
     fun saveUserPreferences() {
         val uid = auth.currentUser?.uid ?: return
-        val prefs = hashMapOf("alertVolume" to alertVolume)
+        val prefs = hashMapOf(
+            "alertVolume" to alertVolume,
+            "isDarkMode" to isDarkMode,
+            "selectedLanguage" to selectedLanguage
+        )
         db.collection("Users").document(uid).set(prefs, com.google.firebase.firestore.SetOptions.merge())
     }
 

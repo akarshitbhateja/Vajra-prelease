@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">লাইফসিঙ্ক</string>
+    <string name="vajra">বজ্র</string>
+    <string name="home">হোম</string>
+    <string name="settings">সেটিংস</string>
+    <string name="logout">লগ আউট</string>
+    <string name="menu">বজ্র মেনু</string>
+    <string name="protection_active">নিরাপত্তা\nসক্রিয়</string>
+    <string name="system_diagnostic">সিস্টেম ডায়াগনস্টিক</string>
+    <string name="sos">এসওএস (SOS)</string>
+    <string name="manual_sos">ম্যানুয়াল এসওএস</string>
+    <string name="emergency_contacts">জরুরী\nযোগাযোগ</string>
+    <string name="medical_profile">মেডিকেল\nপ্রোফাইল</string>
+    <string name="safety_network">নিরাপত্তা নেটওয়ার্ক</string>
+    <string name="guardian_circle">গার্ডিয়ান সার্কেল</string>
+    <string name="manage_contacts">পরিচিতি পরিচালনা</string>
+    <string name="manage">পরিচালনা</string>
+    <string name="app_preferences">অ্যাপ পছন্দসমূহ</string>
+    <string name="dark_mode">ডার্ক মোড</string>
+    <string name="notifications">বিজ্ঞপ্তি</string>
+    <string name="language">ভাষা</string>
+    <string name="master_volume">অ্যালার্ট ভলিউম</string>
+</resources>

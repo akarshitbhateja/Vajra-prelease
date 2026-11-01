@@ -6,11 +6,20 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-// 1. Read keys from local.properties
+// 1. Read keys from local.properties or .env
 val localProperties = Properties()
-val localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localProperties.load(localPropertiesFile.inputStream())
+val possibleFiles = listOf(
+    file(".env"),
+    file("local.properties"),
+    rootProject.file(".env"),
+    rootProject.file("local.properties")
+)
+for (propFile in possibleFiles) {
+    if (propFile.exists()) {
+        propFile.inputStream().use { stream ->
+            localProperties.load(stream)
+        }
+    }
 }
 
 android {
@@ -34,7 +43,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -42,8 +52,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
@@ -52,6 +62,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.appcompat:appcompat:1.6.1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
